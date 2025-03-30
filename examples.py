@@ -8,7 +8,7 @@ device = accelerator.device
 # load your pretrained palm
 
 palm = PaLM(
-    num_tokens = 20000,
+    num_tokens = 20000, # vocab size
     dim = 512,
     depth = 12
 ).to(device)
@@ -26,6 +26,7 @@ reward_model = RewardModel(
 
 seq = torch.randint(0, 20000, (1, 1024)).to(device)
 prompt_mask = torch.zeros(1, 1024).bool().to(device) # which part of the sequence is prompt, which part is response
+# 给每一个回答一个标签吗
 labels = torch.randint(0, 5, (1,)).to(device)
 
 # train

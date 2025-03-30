@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+import sys
+sys.path.append(os.getcwd())
+
 import math
 import copy
 from pathlib import Path
@@ -58,7 +62,7 @@ class Residual(Module):
 
     def forward(self, x, **kwargs):
         y = self.fn(x, **kwargs)
-
+        # modify 如果x和y都不需要梯度，使用原地加法操作（in-place）节省内存（不创建新张量）
         if not any([t.requires_grad for t in (x, y)]):
             return x.add_(y)
 
@@ -81,6 +85,7 @@ class RotaryEmbedding(Module):
 
     def forward(self, seq_len, device):
         t = torch.arange(seq_len, device = device).type_as(self.inv_freq)
+        # modified 外积 结果是形状为 (seq_len, dim//2) 的二维张量，表示每个位置在每个频率分量上的旋转角度
         freqs = torch.einsum('i , j -> i j', t, self.inv_freq)
         freqs = torch.cat((freqs, freqs), dim = -1)
 
@@ -207,7 +212,8 @@ class ParallelTransformerBlock(Module):
         x = self.norm(x)
 
         # attention queries, keys, values, and feedforward inner
-
+        # modified 将所有参数打包成一个线性层，然后将结果通过 split 函数拆分
+        # modified ？？？attention 和 ff 并行？
         q, k, v, ff = self.fused_attn_ff_proj(x).split(self.fused_dims, dim=-1)
 
         # finetune loras
@@ -259,27 +265,27 @@ class ParallelTransformerBlock(Module):
         return attn_out + ff_out
 
 # transformer
-
+# modified TODO continue 
 class PaLM(Module):
     @beartype
     def __init__(
         self,
         *,
-        dim,
-        num_tokens,
-        depth,
-        causal = True,
-        dim_head = 64,
-        heads = 8,
-        ff_mult = 4,
-        attn_dropout = 0.,
-        ff_dropout = 0.,
-        qk_rmsnorm = False,
-        lora_r = 8,
-        rotary_xpos_scale_base = 512,
-        flash_attn = False,
-        finetune_scopes = tuple(),
-        cross_entropy_ignore_index = 0
+        dim,  # 模型维度/隐藏层大小
+        num_tokens,  # 词汇表大小
+        depth,  # 网络层数/深度
+        causal = True,  # 是否使用因果注意力(用于自回归生成)
+        dim_head = 64,  # 每个注意力头的维度
+        heads = 8,  # 注意力头的数量
+        ff_mult = 4,  # 前馈网络隐藏层维度相对于dim的倍数
+        attn_dropout = 0.,  # 注意力层的dropout率
+        ff_dropout = 0.,  # 前馈网络的dropout率
+        qk_rmsnorm = False,  # 是否对QK使用RMS归一化
+        lora_r = 8,  # LoRA微调的秩(rank)
+        rotary_xpos_scale_base = 512,  # 旋转位置编码的基数
+        flash_attn = False,  # 是否使用Flash Attention加速
+        finetune_scopes = tuple(),  # 微调范围列表
+        cross_entropy_ignore_index = 0  # 交叉熵损失忽略的索引(通常用于padding)
     ):
         super().__init__()
         self.dim = dim
@@ -514,3 +520,13 @@ class PaLM(Module):
 
         logits = rearrange(logits, 'b n c -> b c n')
         return F.cross_entropy(logits, labels, ignore_index = self.cross_entropy_ignore_index)
+
+
+# modified
+if __name__ == '__main__':
+    x = torch.tensor([
+        [1.0, 2.0, 3.0, 4.0],  # 样本1
+        [5.0, 6.0, 7.0, 8.0]   # 样本2
+    ])
+    swiglu = SwiGLU()
+    print(swiglu(x))

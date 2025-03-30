@@ -35,7 +35,7 @@ def masked_mean(seq, mask = None, dim = 1, keepdim = False):
     numer = masked_seq.sum(dim = dim, keepdim = keepdim)
     denom = mask.sum(dim = dim, keepdim = keepdim)
 
-    masked_mean = numer / denom.clamp(min = 1e-3)
+    masked_mean = numer / denom.clamp(min = 1e-3) # add an episilon to avoid dividing by zero
     masked_mean = masked_mean.masked_fill(denom == 0, 0.)
     return masked_mean
 
