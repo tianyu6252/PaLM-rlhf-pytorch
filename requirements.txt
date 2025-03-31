@@ -1,3 +1,5 @@
 beartype
 einops
 accelerate
+hl_gauss_pytorch
+adam_atan2_pytorch

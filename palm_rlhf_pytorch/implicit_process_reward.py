@@ -1,8 +1,14 @@
 # Free Process Rewards without Process Labels 
 # Yuan et al.  https://arxiv.org/abs/2412.01981 - paper that led to Prime
 
+
+
 from __future__ import annotations
 from copy import deepcopy
+
+import os
+import sys
+sys.path.append(os.getcwd())
 
 import torch
 from torch.nn import Module
@@ -18,10 +24,10 @@ def exists(v):
 def get_logprob_at(logits, seq):
     log_probs = logits.log_softmax(dim = -1)
     seq = rearrange(seq, '... -> ... 1')
-    log_prob = log_probs.gather(-1, seq)
+    log_prob = log_probs.gather(-1, seq) # b,n,1在最后一个维度上取出seq index对应的值
     return rearrange(log_prob, '... 1 -> ...')
 
-class ImplicitPRM(Module):
+class ImplicitPRM(Module): # rewarding the process rather than just the final answer
     """ PRM stands for process reward model, an openai paper that shows that rewarding the steps a model takes to its outcome is better than only rewarding based on final answer or outcome. basically same as when a teacher gives you some credit for showing your steps on an exam """
 
     def __init__(
@@ -51,13 +57,13 @@ class ImplicitPRM(Module):
         seq,
         labels = None
     ):
-        source_seq, target_seq = seq[:, :-1], seq[:, 1:]
+        source_seq, target_seq = seq[:, :-1], seq[:, 1:] # b,n
 
         mask = target_seq >= 0 # assume any token ids < 0 to be padding
 
-        model_logits = self.model(source_seq)
+        model_logits = self.model(source_seq) # b,n,vocab_size
         ref_model_logits = self.ref_model(source_seq)
-
+        # get the log(\pi(a_t | s_t))
         log_prob = get_logprob_at(model_logits, target_seq)
         ref_log_prob = get_logprob_at(ref_model_logits, target_seq)
 
@@ -66,7 +72,7 @@ class ImplicitPRM(Module):
         implicit_rewards = self.beta * (log_prob - ref_log_prob)
 
         # zero out rewards in padding
-
+        # reward for padding token is 0
         implicit_rewards = implicit_rewards.masked_fill(~mask, 0.)
 
         # early return if not training, as in Prime with alternating model and prm training

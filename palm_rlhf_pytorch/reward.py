@@ -110,7 +110,7 @@ class RewardModel(Module):
             )
 
         # get embeddings from palm
-
+        # b, n, d
         embeds = self.palm(
             x,
             extra_embed = extra_embed,
@@ -118,16 +118,21 @@ class RewardModel(Module):
             disable_lora = disable_lora,
             finetune_scope = self.reward_lora_scope
         )
-
+        # b, d 将序列中的n个token的embedding进行平均
         pooled = masked_mean(embeds, mask, dim = 1)
-        pred = self.to_pred(pooled)
+        pred = self.to_pred(pooled) # b, num_binned_output
+        # estimate process
+        # if self.sample_from_bins and self.binned_output:
+        #     assert not exists(labels) # modified raise an error when labels is not None
+        #     pred = gumbel_sample(pred, temperature = self.sample_temperature, dim = -1)
 
-        if self.sample_from_bins and self.binned_output:
-            assert not exists(labels)
-            pred = gumbel_sample(pred, temperature = self.sample_temperature, dim = -1)
-
+        # if not exists(labels):
+        #     return pred
         if not exists(labels):
+            if self.sample_from_bins and self.binned_output:
+                pred = gumbel_sample(pred, temperature = self.sample_temperature, dim = -1)
             return pred
+                
 
         if not self.binned_output:
             return F.mse_loss(pred, labels)

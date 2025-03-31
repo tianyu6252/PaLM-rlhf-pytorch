@@ -25,6 +25,7 @@ reward_model = RewardModel(
 # mock data
 
 seq = torch.randint(0, 20000, (1, 1024)).to(device)
+# Question: the example just take the response as input, but what about the prompt?
 prompt_mask = torch.zeros(1, 1024).bool().to(device) # which part of the sequence is prompt, which part is response
 # 给每一个回答一个标签吗
 labels = torch.randint(0, 5, (1,)).to(device)
@@ -45,7 +46,7 @@ prompts = torch.randint(0, 256, (1, 512)).to(device) # 1 prompt
 
 trainer = RLHFTrainer(
     palm = palm,
-    reward_model = reward_model,
+    reward_model = reward_model, # take in a sequence, return a label
     prompt_token_ids = prompts
 )
 

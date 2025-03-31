@@ -104,7 +104,7 @@ class ActorCritic(Module):
             self.value_head = nn.Linear(palm.dim, critic_dim_out)
 
             nn.init.zeros_(self.value_head.bias)
-            nn.init.orthogonal_(self.value_head.weight, gain = math.sqrt(2))
+            nn.init.orthogonal_(self.value_head.weight, gain = math.sqrt(2)) # 这种初始化有助于保持梯度的稳定，防止在深层网络中出现梯度爆炸或消失
 
     def actor_parameters(self):
         if not self.actor_lora:
@@ -143,7 +143,7 @@ class ActorCritic(Module):
             finetune_scope = self.actor_lora_scope,
             use_tqdm = True,
             **kwargs
-        )
+        ) # b, n
 
         sequence = torch.cat((state, actions), dim = -1)
         action_len = actions.shape[-1]
@@ -155,6 +155,7 @@ class ActorCritic(Module):
         action_mask = ~prompt_mask
 
         mask = None
+        # keep the first eos_token token 
         if exists(eos_token):
             mask = ((sequence == eos_token).cumsum(dim = -1) == 0)
             mask = F.pad(mask, (1, -1), value = True) # include eos token
@@ -366,7 +367,7 @@ class RLHFTrainer(Module):
 
         self.pad_value = pad_value # token pad value
         self.num_prompts = prompt_token_ids.shape[0]
-        self.register_buffer('prompt_token_ids', prompt_token_ids)
+        self.register_buffer('prompt_token_ids', prompt_token_ids) # b,n
 
         # models
 

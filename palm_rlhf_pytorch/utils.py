@@ -43,7 +43,7 @@ def masked_mean(seq, mask = None, dim = 1, keepdim = False):
 
 def gumbel_noise(t):
     noise = torch.zeros_like(t).uniform_(0, 1)
-    return -log(-log(noise))
+    return -log(-log(noise)) # 将噪声从0到1的均匀分布映射到-∞到+∞
 
 def gumbel_sample(t, temperature = 1., dim = -1):
     return ((t / max(temperature, 1e-10)) + gumbel_noise(t)).argmax(dim = dim)
